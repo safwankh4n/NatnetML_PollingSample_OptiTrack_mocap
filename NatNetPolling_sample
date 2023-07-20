@@ -1,0 +1,61 @@
+%this code prints the data, that is the x , y and z of the marker sets from the motive set on multicast to the matlab console and aslo saves the data in the 
+%file called tracking_data1.txt (can be changed to anything) 
+%can be further used with parsing and filtering for any applicatrion needed 
+% this saves data for 60 seconds, that is 60 entries at each frame data per second. 
+
+
+function NatNetPolling
+    fprintf('NatNet Polling Start\n')
+    % Create a file to store the output data
+    fileID = fopen('tracking_data1.txt', 'a');  % Use 'a' flag to append data
+    % create an instance of the natnet client class
+	fprintf( 'Creating natnet class object\n' )
+	natnetclient = natnet;
+	% connect the client to the server (multicast over local loopback) -
+	% modify for your network
+	fprintf( 'Connecting to the server\n' )
+	natnetclient.HostIP = '138.250.29.126';
+	natnetclient.ClientIP = '138.250.29.126';
+	natnetclient.ConnectionType = 'Multicast';
+	natnetclient.connect;
+	if ( natnetclient.IsConnected == 0 )
+		fprintf( 'Client failed to connect\n' )
+		fprintf( '\tMake sure the host is connected to the network\n' )
+		fprintf( '\tand that the host and client IP addresses are correct\n\n' ) 
+		return
+    end
+    fprintf(fileID, 'NatNet Polling Start\n');
+    fprintf(fileID, 'Creating natnet class object\n');
+    fprintf(fileID, 'Connecting to the server\n');
+    % get the asset descriptions for the asset names
+	model = natnetclient.getModelDescription;
+	if ( model.RigidBodyCount < 1 )
+		return
+	end
+	% Poll for the rigid body data a regular intervals (~1 sec) for 10 sec.
+	fprintf( '\nPrinting rigid body frame data approximately every second for 10 seconds...\n\n' )
+    
+    for idx = 1 : 10
+        java.lang.Thread.sleep(996);
+        data = natnetclient.getFrame; % method to get current frame
+        
+        fprintf(fileID, 'Frame:%6d  ', data.iFrame );
+        fprintf(fileID, 'Time:%0.2f\n', data.fTimestamp );
+        for i = 1:model.RigidBodyCount
+            fprintf(fileID, 'Name:"%s"  ', model.RigidBody(i).Name );
+            fprintf(fileID, 'X:%0.1fmm  ', data.RigidBodies(i).x * 1000 );
+            fprintf(fileID, 'Y:%0.1fmm  ', data.RigidBodies(i).y * 1000 );
+            fprintf(fileID, 'Z:%0.1fmm\n', data.RigidBodies(i).z * 1000 );
+        end
+        if (isempty(data.RigidBodies(2)))
+            fprintf(fileID, '\tPacket is empty/stale\n' );
+            fprintf(fileID, '\tMake sure the server is in Live mode or playing in playback\n\n');
+            return;
+        end
+    end
+    fprintf(fileID, 'NatNet Polling Sample End\n');
+    % Close the file after the loop
+    fclose(fileID);
+    
+    disp('NatNet Polling Sample End' )
+end
